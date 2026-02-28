@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Encrypted Admin Portal</title> 
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input::-webkit-input-placeholder{
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 p-8">
+
+    <div id="lock-screen" class="fixed inset-0 bg-slate-900 z-[9999] flex items-center justify-center">
+        <div class="bg-slate-800 p-10 rounded-2xl border border-slate-700 shadow-2xl w-96">
+            <h2 class="text-2xl font-bold mb-6 text-center text-blue-400">Security Check</h2>
+            <input type="password" id="pass-field" placeholder="Access Code"
+                   class="w-full bg-slate-700 border border-slate-600 p-3 rounded-lg mb-4 outline-none focus:border-blue-500 text-white">
+            <button onclick="verify()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold transition-all">Unlock System</button>
+            <p id="error" class="text-red-500 text-sm mt-4 hidden text-center">Unauthorized Access Attempt</p>
+        </div>
+    </div>
+
+    <div id="content" class="hidden">
+        <h1 class="text-3xl font-bold mb-8 border-b border-slate-700 pb-4">Live Monitoring Dashboard</h1>
+        <div class="overflow-x-auto rounded-lg border border-slate-700">
+            <table class="w-full text-left bg-slate-800">
+                <thead class="bg-slate-700">
+                    <tr>
+                        <th class="p-4">Timestamp</th>
+                        <th class="p-4">Coordinates</th>
+                        <th class="p-4">Video/Audio Feed</th>
+                    </tr>
+                </thead>
+                <tbody id="log-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // CHANGE THIS to your actual Render Backend URL (The Web Service one)
+        const BACKEND_URL = "https://your-backend-service.onrender.com";
+
+        function verify() {
+            const val = document.getElementById('pass-field').value;
+            if (val === 'Zahra') {
+                document.getElementById('lock-screen').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                startFetching(); // Start the loop only after password is correct
+            } else {
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('pass-field').value = '';
+            }
+        }
+
+        async function startFetching() {
+            updateTable();
+            setInterval(updateTable, 7000); // Refresh every 7 seconds
+        }
+
+        async function updateTable() {
+            try {
+                const res = await fetch(`${BACKEND_URL}/data`);
+                const data = await res.json();
+                const list = document.getElementById('log-list');
+               
+                list.innerHTML = data.map(item => `
+                    <tr class="border-t border-slate-700 hover:bg-slate-700/50">
+                        <td class="p-4 font-mono text-blue-300 text-sm">${item.timestamp}</td>
+                        <td class="p-4 text-sm">${item.location}</td>
+                        <td class="p-4">
+                            <video class="w-48 rounded border border-slate-600" src="${item.videoUrl}" controls></video>
+                        </td>
+                    </tr>
+                `).reverse().join('');
+            } catch (err) {
+                console.error("Fetch failed. Is your backend awake?");
+            }
+        }
+    </script>
+</body>
+</html>
