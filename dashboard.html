@@ -64,16 +64,22 @@
                 const res = await fetch(`${BACKEND_URL}/data`);
                 const data = await res.json();
                 const list = document.getElementById('log-list');
-               
-                list.innerHTML = data.map(item => `
-                    <tr class="border-t border-slate-700 hover:bg-slate-700/50">
-                        <td class="p-4 font-mono text-blue-300 text-sm">${item.timestamp}</td>
-                        <td class="p-4 text-sm">${item.location}</td>
-                        <td class="p-4">
-                            <video class="w-48 rounded border border-slate-600" src="${item.videoUrl}" controls></video>
-                        </td>
-                    </tr>
-                `).reverse().join('');
+                  list.innerHTML = data.map(item => `
+    <tr class="border-t border-slate-700 hover:bg-slate-800/50 transition">
+        <td class="p-4 font-mono text-blue-300 text-sm">${item.timestamp}</td>
+        <td class="p-4 text-sm text-slate-300">${item.location}</td>
+        <td class="p-4">
+            <video class="w-48 rounded-lg border border-slate-600 shadow-lg" 
+                   src="${item.videoUrl}" 
+                   controls>
+            </video>
+            <a href="${item.videoUrl}" target="_blank" class="block text-xs text-blue-400 mt-2 underline">
+                Open Video in New Tab
+            </a>
+        </td>
+    </tr>
+`).join('');
+
             } catch (err) {
                 console.error("Fetch failed. Is your backend awake?");
             }
